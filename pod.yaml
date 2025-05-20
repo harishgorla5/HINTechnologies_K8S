@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hintechnologies-pod
+  labels:
+    app: nginx
+spec:
+  containers:
+    - name: pod-component
+      image: harishgorla5/project03:latest
+      ports:
+        - containerPort: 80
