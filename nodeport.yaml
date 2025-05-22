@@ -1,4 +1,4 @@
-# 1. Deployment: Sample App Container
+# 1. Deployment: Real App (replace with your own image)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,30 +15,15 @@ spec:
     spec:
       containers:
       - name: my-app-container
-        image: hashicorp/http-echo:latest         # Replace with your own image!
+        image: hashicorp/http-echo:latest    # Replace with your actual image
         args:
-          - "-text=Hello HINTechnologies "
+          - "-text=Hello from my app"
         ports:
-        - containerPort: 5678                     # App listens on this port
+        - containerPort: 5678                # Change if your app uses another port
 
 ---
 
-# 2. ClusterIP Service: Internal communication
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-app-clusterip
-spec:
-  type: ClusterIP
-  selector:
-    app: my-app
-  ports:
-    - port: 80
-      targetPort: 5678
-
----
-
-# 3. NodePort Service: External access from outside the cluster
+# 2. NodePort Service: External access only
 apiVersion: v1
 kind: Service
 metadata:
@@ -48,6 +33,7 @@ spec:
   selector:
     app: my-app
   ports:
-    - port: 80
-      targetPort: 5678
-      nodePort: 30080     # Optional, can omit to auto-assign
+    - protocol: TCP
+      port: 80           # Port exposed to clients
+      targetPort: 5678   # Must match containerPort
+      nodePort: 30080    # External access port (optional; auto-assigned if removed)
