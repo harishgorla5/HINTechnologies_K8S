@@ -1,0 +1,99 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_CREDENTIALS_ID = 'project4'  
+        GIT_REPO_URL = 'https://github.com/harishgorla5/Project04.git'  
+        DOCKER_IMAGE_NAME = 'harishgorla5/project4'
+        SLACK_CHANNEL = '#ci-cd-buildstatus'  // 🔹 Update with your Slack channel
+        SLACK_CREDENTIALS_ID = 'slack'  // 🔹 Uses the Slack credentials stored in Jenkins
+    }
+
+    stages {
+        stage('Clone GitHub Repository') {
+            steps {
+                git url: "${GIT_REPO_URL}", branch: 'project4'
+            }
+        }
+
+        stage('Build and Prepare Docker Image') {
+            steps {
+                script {
+                    // Fetch the latest version from Docker Hub
+                    def latestTag = sh(
+                        script: 'curl -s https://hub.docker.com/v2/repositories/${DOCKER_IMAGE_NAME}/tags | jq -r \'.results | map(select(.name | test("^v[0-9]+\\\\.[0-9]+$"))) | sort_by(.name) | last | .name\' || echo "v4.0"',
+                        returnStdout: true
+                    ).trim()
+
+                    if (latestTag == "null" || !latestTag.startsWith("v")) {
+                        latestTag = "v4.0"
+                    }
+
+                    def currentVersion = latestTag.replaceAll("[^0-9.]", "").toFloat()
+                    def newVersion = currentVersion + 0.1
+                    env.IMAGE_VERSION = String.format("v%.1f", newVersion)
+
+                    echo "New Docker Image Version: ${IMAGE_VERSION}"
+
+                    // Login to Docker Hub
+                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    }
+
+                    // Pull latest Nginx image
+                    sh 'docker pull nginx:latest'
+
+                    // Update index.html inside container
+                    if (fileExists('index.html')) {
+                        writeFile file: 'Dockerfile', text: '''
+                        FROM nginx:latest
+                        COPY index.html /usr/share/nginx/html/index.html
+                        '''
+                    } else {
+                        error "index.html file is missing!"
+                    }
+
+                    // Build Docker Image
+                    sh 'docker build -t ${DOCKER_IMAGE_NAME}:${IMAGE_VERSION} -t ${DOCKER_IMAGE_NAME}:latest .'
+                }
+            }
+        }
+
+        stage('Push Updated Image to Docker Hub') {
+            steps {
+                script {
+                    sh 'docker push ${DOCKER_IMAGE_NAME}:${IMAGE_VERSION}'
+                    sh 'docker push ${DOCKER_IMAGE_NAME}:latest'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                slackSend(
+                    channel: "${SLACK_CHANNEL}",
+                    color: "good",
+                    message: "✅ *SUCCESS*: Jenkins Build Completed! 🎉\n*Project:* Project04\n*Version:* ${IMAGE_VERSION}\n*Docker Image:* ${DOCKER_IMAGE_NAME}:latest"
+                )
+            }
+        }
+        failure {
+            script {
+                slackSend(
+                    channel: "${SLACK_CHANNEL}",
+                    color: "danger",
+                    message: "❌ *FAILED*: Jenkins Build Failed! 🚨\n*Project:* Project04\n*Check Jenkins logs for errors.*"
+                )
+            }
+        }
+        always {
+            script {
+                echo "🧹 Removing all local Docker images..."
+                sh 'docker rmi -f $(docker images -aq) || echo "No images to remove."'
+                sh 'docker system prune -f'
+            }
+        }
+    }
+}
