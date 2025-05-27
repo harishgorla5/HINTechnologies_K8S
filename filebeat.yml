@@ -1,0 +1,2 @@
+output.logstash:
+  hosts: ["<NODE_IP>:32000"]
