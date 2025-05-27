@@ -7,7 +7,7 @@ data:
     <html>
     <body>
       <h1>Upload Image</h1>
-      <form method="POST" action="/upload" enctype="multipart/form-data">
+      <form method="POST" action="http://13.201.3.38:30081/upload" enctype="multipart/form-data">
         <input type="file" name="file" />
         <input type="submit" value="Upload" />
       </form>
