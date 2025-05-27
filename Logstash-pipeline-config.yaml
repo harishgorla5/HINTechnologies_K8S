@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline
+  namespace: logging
+data:
+  logstash.conf: |-
+    input {
+      beats {
+        port => 5044
+      }
+    }
+
+    filter {
+      # Optional parsing and filtering
+      if [kubernetes] {
+        mutate {
+          add_field => { "namespace" => "%{[kubernetes][namespace]}" }
+        }
+      }
+    }
+
+    output {
+      stdout { codec => rubydebug }
+      # Uncomment below to send to Elasticsearch
+      # elasticsearch {
+      #   hosts => ["http://elasticsearch.logging.svc.cluster.local:9200"]
+      #   index => "logstash-%{+YYYY.MM.dd}"
+      # }
+    }
