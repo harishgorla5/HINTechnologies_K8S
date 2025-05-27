@@ -40,11 +40,23 @@ else
     exit 1
 fi
 
-# Display selected node type
-echo "You selected $node_type"
+# Ask for unique hostname
+while true; do
+    read -p "Enter a unique hostname for this $node_type: " unique_hostname
+    if [ -z "$unique_hostname" ]; then
+        echo "Hostname cannot be empty. Please enter a valid hostname."
+    else
+        # Optionally check if hostname is valid (letters, digits, dash)
+        if [[ "$unique_hostname" =~ ^[a-zA-Z0-9-]+$ ]]; then
+            break
+        else
+            echo "Invalid hostname. Use only letters, numbers, and dashes."
+        fi
+    fi
+done
 
-# Step 01: Change the Hostname
-hostnamectl set-hostname "$node_type"
+echo "Setting hostname to $unique_hostname ..."
+hostnamectl set-hostname "$unique_hostname"
 steps[0]="01    | Change the Hostname                                          | Completed"
 
 # Step 02: Persistent loading of modules
@@ -57,7 +69,7 @@ modprobe br_netfilter
 steps[2]="03    | Load kernel modules                                          | Completed"
 
 # Step 04: Update IP Table settings
-tee /etc/sysctl.d/kubernetes.conf<<EOF
+tee /etc/sysctl.d/kubernetes.conf <<EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward = 1
@@ -84,8 +96,8 @@ steps[7]="08    | Install Containerd                                           |
 
 # Step 09: Configure containerd for systemd
 mkdir -p /etc/containerd
-containerd config default>/etc/containerd/config.toml
-sed -e 's/SystemdCgroup = false/SystemdCgroup = true/g' -i /etc/containerd/config.toml
+containerd config default > /etc/containerd/config.toml
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
 steps[8]="09    | Configure containerd for systemd                             | Completed"
 
 # Step 10: Reload, Restart, Enable containerd
@@ -119,7 +131,7 @@ systemctl enable kubelet
 steps[15]="16    | Enable kubelet service                                       | Completed"
 
 # Step 17: Disable swap temporarily
-sudo swapoff -a
+swapoff -a
 steps[16]="17    | Disable swap temporarily                                     | Completed"
 
 # Step 18: Make swap off permanent
