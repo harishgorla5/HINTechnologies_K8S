@@ -3,12 +3,11 @@ kind: ConfigMap
 metadata:
   name: upload-html
 data:
-  index.html: |
-    <!DOCTYPE html>
+  upload.html: |
     <html>
     <body>
-      <h2>Upload Image</h2>
-      <form action="http://<NODE-IP>:30081/upload" method="POST" enctype="multipart/form-data">
+      <h1>Upload Image</h1>
+      <form method="POST" action="/upload" enctype="multipart/form-data">
         <input type="file" name="file" />
         <input type="submit" value="Upload" />
       </form>
