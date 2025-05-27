@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      containers:
+        - name: backend
+          image: python:3.9-slim
+          command: ["sh", "-c"]
+          args:
+            - pip install flask kubernetes && python -m flask run --host=0.0.0.0 --port=5000
+          env:
+            - name: FLASK_APP
+              value: /mnt/backend/app.py
+          volumeMounts:
+            - name: backend-code
+              mountPath: /mnt/backend
+      volumes:
+        - name: backend-code
+          configMap:
+            name: backend-app
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-app
+data:
+  app.py: |
+    from flask import Flask, request
+    from kubernetes import client, config
+    import os
+
+    app = Flask(__name__)
+    config.load_incluster_config()
+    batch_api = client.BatchV1Api()
+
+    @app.route('/upload', methods=['POST'])
+    def upload():
+        f = request.files['file']
+        path = f"/data/{f.filename}"
+        f.save(path)
+
+        job = {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "metadata": {"name": f"resize-{f.filename.replace('.', '-')}"[:63]},
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [{
+                            "name": "resize",
+                            "image": "dpokidov/imagemagick",
+                            "command": ["convert", path, "-resize", "100x100", f"/data/thumb_{f.filename}"],
+                            "volumeMounts": [{
+                                "name": "images",
+                                "mountPath": "/data"
+                            }]
+                        }],
+                        "restartPolicy": "Never",
+                        "volumes": [{
+                            "name": "images",
+                            "persistentVolumeClaim": {
+                                "claimName": "image-pvc"
+                            }
+                        }]
+                    }
+                }
+            }
+        }
+
+        batch_api.create_namespaced_job(namespace="default", body=job)
+        return "Upload successful. Resize Job started."
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api-svc
+spec:
+  selector:
+    app: backend-api
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30081
+  type: NodePort
