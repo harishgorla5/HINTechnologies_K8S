@@ -1,10 +1,9 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: logstash
   namespace: logging
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: logstash
