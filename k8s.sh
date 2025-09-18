@@ -111,11 +111,11 @@ apt-get update && apt-get install -y apt-transport-https ca-certificates curl
 steps[10]="11    | Install required packages for Kubernetes                     | Completed"
 
 # Step 12: Download Kubernetes GPG key
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.34/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 steps[11]="12    | Download Kubernetes GPG key                                  | Completed"
 
 # Step 13: Add Kubernetes Repository
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 steps[12]="13    | Add Kubernetes Repository                                    | Completed"
 
 # Step 14: Install kubelet, kubeadm, kubectl
